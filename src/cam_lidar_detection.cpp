@@ -32,7 +32,7 @@ public:
     void lidar_callback(const sensor_msgs::PointCloud2& data);
     //void detect_callback(const std::vector& data);
     void clustering(void);
-    void visualization(void);
+    // void visualization(void);
     ros::Publisher pub_detect;
     ros::Subscriber sub_lidar;
     ros::Subscriber sub_datect;
@@ -80,7 +80,7 @@ void Cam_lidar_detection::lidar_callback(const sensor_msgs::PointCloud2& data){
 
     clusters.clear();
     clustering();
-    visualization();
+    //visualization();
 }
 
 void Cam_lidar_detection::clustering(void){

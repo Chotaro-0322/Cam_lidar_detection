@@ -1,15 +1,12 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.0.2)
 project(cam_lidar_detection)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
-if(NOT DEFINED CMAKE_SUPPRESS_DEVELOPER_WARNINGS)
-     set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS 1 CACHE INTERNAL "No dev warnings")
-endif()
+add_compile_options(-std=c++14)
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(PCL 1.8 REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
@@ -17,10 +14,11 @@ find_package(catkin REQUIRED COMPONENTS
   eigen_conversions
   grid_map_ros
   sensor_msgs
-  #pcl_ros
+  pcl_ros
   geometry_msgs
 )
 
+find_package(PCL 1.8 REQUIRED COMPONENTS)
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
@@ -148,7 +146,6 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(cam_lidar_detection src/cam_lidar_detection.cpp)
-#add_executable(cal_potential_lidar src/cal_potential_lidar.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -164,9 +161,6 @@ add_executable(cam_lidar_detection src/cam_lidar_detection.cpp)
 target_link_libraries(cam_lidar_detection
   ${catkin_LIBRARIES}
 )
-# target_link_libraries(cal_potential_lidar
-#   ${catkin_LIBRARIES}
-# )
 
 #############
 ## Install ##
