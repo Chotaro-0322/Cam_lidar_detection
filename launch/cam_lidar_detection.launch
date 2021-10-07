@@ -1,0 +1,6 @@
+<launch>
+  <!-- <arg name="rvizconfig" default="$(find cam_lidar_detection)/rviz/cam_lidar_detection.rviz" /> -->
+  <param name="use_sim_time" value="ture"/>
+  <node name="cam_lidar_detection" pkg="cam_lidar_detection" type="cam_lidar_detection" />
+  <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true" /> -->
+</launch>

@@ -161,6 +161,7 @@ add_executable(cam_lidar_detection src/cam_lidar_detection.cpp)
 ## Specify libraries to link a library or executable target against
 target_link_libraries(cam_lidar_detection
   ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
 )
 
 #############
