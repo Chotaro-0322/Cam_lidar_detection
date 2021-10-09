@@ -33,6 +33,7 @@ public:
     ros::NodeHandle nhPrivate;
     void run();
     void lidar_callback(const sensor_msgs::PointCloud2& data);
+	void detection_callback(const std_msgs::Float32MultiArray& data);
     //void detect_callback(const std::vector& data);
     void clustering(void);
     void fix_clustering(void);
@@ -136,6 +137,10 @@ void Cam_lidar_detection::lidar_callback(const sensor_msgs::PointCloud2& data){
     // visualization();
 }
 
+void Cam_lidar_detection::detection_callback(const std_msgs::Float32MultiArray& data){
+	
+}
+
 void Cam_lidar_detection::clustering(void){
     double time_start = ros::Time::now().toSec();
     /*clustering*/
@@ -184,96 +189,6 @@ void Cam_lidar_detection::clustering(void){
 	// std::cout << "clustering time [s] = " << ros::Time::now().toSec() - time_start << std::endl;
 }
 
-// void Cam_lidar_detection::fix_clustering(void){ // https://lilaboc.work/archives/20178032.html
-// 	double time_start = ros::Time::now().toSec();
-
-// 	/*search config*/
-// 	/*kd-treeクラスを宣言*/
-// 	pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-// 	/*探索する点群をinput*/
-// 	kdtree.setInputCloud(cloud);
-// 	max_cluster_size = cloud->points.size();
-// 	/*objects*/
-// 	std::vector<pcl::PointIndices> cluster_indices;
-// 	std::vector<bool> processed(cloud->points.size(), false);
-// 	std::vector<int> nn_indices;
-// 	std::vector<float> nn_distances;
-// 	/*clustering*/
-// 	for(size_t i=0;i<cloud->points.size();++i){
-// 		if(processed[i])	continue;	//既に分類されているかチェック
-// 		/*set seed（シード点を設定）*/
-// 		std::vector<int> seed_queue;
-// 		int sq_idx = 0;
-// 		seed_queue.push_back(i);
-// 		processed[i] = true;
-// 		/*clustering*/
-// 		while(sq_idx < seed_queue.size()){	//探索しきるまでループ
-// 			/*search*/
-// 			double tolerance = ComputeTolerance(cloud->points[seed_queue[sq_idx]]);
-// 			int ret = kdtree.radiusSearch(cloud->points[seed_queue[sq_idx]], tolerance, nn_indices, nn_distances);
-// 			if(ret == -1){
-// 				PCL_ERROR("[pcl::extractEuclideanClusters] Received error code -1 from radiusSearch\n");
-// 				exit(0);
-// 			}
-// 			/*check*/
-// 			for(size_t j=0;j<nn_indices.size();++j){
-// 				/*//既に分類されているかチェック*/
-// 				if(nn_indices[j]==-1 || processed[nn_indices[j]])	continue;
-// 				/*カスタム条件でチェック*/
-// 				if(CustomCondition(cloud->points[seed_queue[sq_idx]], cloud->points[nn_indices[j]], nn_distances[j])){
-// 					seed_queue.push_back(nn_indices[j]);
-// 					processed[nn_indices[j]] = true;
-// 				}
-// 			}
-// 			sq_idx++;
-// 		}
-// 		/*judge（クラスタのメンバ数が条件を満たしているか）*/
-// 		if(seed_queue.size()>=min_cluster_size && seed_queue.size()<=max_cluster_size){
-// 			pcl::PointIndices tmp_indices;
-// 			tmp_indices.indices = seed_queue;
-// 			cluster_indices.push_back(tmp_indices);
-// 		}
-// 	}
-// 	std::cout << "cluster_indices.size() = " << cluster_indices.size() << std::endl;
-// 	/*extraction（クラスタごとに点群を分割）*/
-// 	pcl::ExtractIndices<pcl::PointXYZ> ei;
-// 	ei.setInputCloud(cloud);
-// 	ei.setNegative(false);
-// 	for(size_t i=0;i<cluster_indices.size();i++){
-// 		/*extract*/
-// 		pcl::PointCloud<pcl::PointXYZ>::Ptr tmp_clustered_points (new pcl::PointCloud<pcl::PointXYZ>);
-// 		pcl::PointIndices::Ptr tmp_clustered_indices (new pcl::PointIndices);
-// 		*tmp_clustered_indices = cluster_indices[i];
-// 		ei.setIndices(tmp_clustered_indices);
-// 		ei.filter(*tmp_clustered_points);
-// 		/*input*/
-// 		clusters.push_back(tmp_clustered_points);
-// 	}
-
-// 	std::cout << "clustering time [s] = " << ros::Time::now().toSec() - time_start << std::endl;
-// }
-
-// double Cam_lidar_detection::ComputeTolerance(const pcl::PointXYZ& point) //https://lilaboc.work/archives/20178032.html
-// {
-// 	/*センサからの距離（depth）*/
-// 	double depth = sqrt(
-// 		point.x * point.x
-// 		+ point.y * point.y
-// 		+ point.z * point.z
-// 	);
-
-// 	double tolerance = ratio_depth_tolerance*depth;	//距離に比例
-// 	if(tolerance < min_tolerance)	tolerance = min_tolerance;
-// 	if(tolerance > max_tolerance)	tolerance = max_tolerance;
-
-// 	return tolerance;
-// }
-
-// bool Cam_lidar_detection::CustomCondition(const pcl::PointXYZ& seed_point, const pcl::PointXYZ& candidate_point, float squared_distance){
-// 	return true;
-// }//https://lilaboc.work/archives/20178032.html
-	
-
 void Cam_lidar_detection::rviz_visualization(void){
 	marker_array.markers.resize(clusters.size());
 	// marker_array.markers.resize(1);
@@ -316,38 +231,6 @@ void Cam_lidar_detection::downsampling(void){
 	vg.filter(*voxcel_tmp);
 	*cloud = *voxcel_tmp;
 }
-
-// void Cam_lidar_detection::visualization(void)
-// {
-// 	/*前ステップの可視化をリセット*/
-// 	viewer->removeAllPointClouds();
-
-// 	/*cloud*/
-// 	viewer->addPointCloud(cloud, "cloud");
-// 	viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 0.0, 0.0, 0.0, "cloud");
-// 	viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "cloud");
-// 	/*clusters*/
-// 	double rgb[3] = {};
-// 	const int channel = 3;	//RGB
-// 	const double step = ceil(pow(clusters.size()+2, 1.0/(double)channel));	//exept (000),(111)
-// 	const double max = 1.0;
-// 	/*クラスタをいい感じに色分け*/
-// 	for(size_t i=0;i<clusters.size();i++){
-// 		std::string name = "cluster_" + std::to_string(i);
-// 		rgb[0] += 1/step;
-// 		for(int j=0;j<channel-1;j++){
-// 			if(rgb[j]>max){
-// 				rgb[j] -= max + 1/step;
-// 				rgb[j+1] += 1/step;
-// 			}
-// 		}
-// 		viewer->addPointCloud(clusters[i], name);
-// 		viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, rgb[0], rgb[1], rgb[2], name);
-// 		viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, name);
-// 	}
-// 	/*表示の更新*/
-// 	viewer->spinOnce();
-// }
 
 int main(int argc, char** argv){
     ros::init(argc, argv, "cam_lid_detection");
