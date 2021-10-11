@@ -1,5 +1,11 @@
 {
     "files.associations": {
         "iostream": "cpp"
-    }
+    },
+    "python.autoComplete.extraPaths": [
+        "/home/chohome/ROS2_omnidirectional_ssd_marge/install/ssd_detection/lib/python3.6/site-packages",
+        "/home/chohome/ROS2_omnidirectional_ssd_marge/install/mb1ssd_detection/lib/python3.6/site-packages",
+        "/opt/ros/dashing/lib/python3.6/site-packages",
+        "/opt/ros/melodic/lib/python2.7/dist-packages"
+    ]
 }

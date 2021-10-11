@@ -163,24 +163,35 @@ void Cam_lidar_detection::detection_callback(const std_msgs::Float32MultiArray::
 
 	int num_clusters = x_maxmin.size() / 4;
 	Eigen::Map<Eigen::MatrixXf, Eigen::RowMajor> cluster_mat(msg_vec.data(), num_clusters, 4);
-	// std::cout << "cluster_mat : \n" << cluster_mat << std::endl;
+	std::cout << "cluster_mat : \n" << cluster_mat << std::endl;
 	// 基準となる(x, y)=(0, 10)の座標を用意
-	Eigen::MatrixXf virtual_coord = Eigen::MatrixXf::Zero(num_clusters, 2);
-	virtual_coord.col(0) = Eigen::VectorXf::Constant(num_clusters, 1);
-	virtual_coord.col(1) = Eigen::VectorXf::Constant(num_clusters, 10);
-	// std::cout << "virtual_coord dot : \n" << virtual_coord << std::endl;
-	// std::cout << "num_clusters : \n" << num_clusters << std::endl;
-	// std::cout << "cluster_mat dot : \n" << cluster_mat.block(0, 0, num_clusters, 2).dot(virtual_coord.transpose()) << std::endl;
-	std::cout << "cluster_mat block : \n" << cluster_mat.block(0, 0, num_clusters, 2) << std::endl;
-	std::cout << "virtual_coord transpose : \n" << virtual_coord.transpose() << std::endl;
-	Eigen::MatrixXf mole_deg_max = (cluster_mat.block(0, 0, num_clusters, 2) * virtual_coord.transpose()).col(0);
-	// std::cout << "mole_deg_max : \n" <<  mole_deg_max << std::endl;
-	// Eigen::MatrixXf deno_deg_max = 
-	// 		((cluster_mat.block(0, 0, num_clusters, 1).cwiseAbs2() + cluster_mat.block(0, 1, num_clusters, 1).cwiseAbs2()).cwiseSqrt()).array() * 
- 	// 		((virtual_coord.block(0, 0, num_clusters, 1).cwiseAbs2() + virtual_coord.block(0, 1, num_clusters, 1).cwiseAbs2()).cwiseSqrt()).array(); 
-	// std::cout << "deno_deg_max : \n" << deno_deg_max << std::endl;
-	// Eigen::MatrixXf clsuters_deg_max = mole_deg_max.array() / deno_deg_max.array();
-	// std::cout << "clusters_deg_max : \n" << clsuters_deg_max << std::endl;
+	if(cluster_mat.size() != 0){
+		Eigen::MatrixXf virtual_coord = Eigen::MatrixXf::Zero(num_clusters, 2);
+		virtual_coord.col(0) = Eigen::VectorXf::Constant(num_clusters, 1);
+		virtual_coord.col(1) = Eigen::VectorXf::Constant(num_clusters, 10);
+		// std::cout << "virtual_coord dot : \n" << virtual_coord << std::endl;
+		// std::cout << "num_clusters : \n" << num_clusters << std::endl;
+		// std::cout << "cluster_mat dot : \n" << cluster_mat.block(0, 0, num_clusters, 2).dot(virtual_coord.transpose()) << std::endl;
+		// std::cout << "cluster_mat block : \n" << cluster_mat.block(0, 0, num_clusters, 2) << std::endl;
+		// std::cout << "virtual_coord transpose : \n" << virtual_coord.transpose() << std::endl;
+		Eigen::MatrixXf mole_deg_max = (cluster_mat.block(0, 0, num_clusters, 2) * virtual_coord.transpose()).col(0);
+		std::cout << "mole_deg_max : \n" <<  mole_deg_max << std::endl;
+		Eigen::MatrixXf deno_deg_max = 
+				((cluster_mat.block(0, 0, num_clusters, 1).cwiseAbs2() + cluster_mat.block(0, 1, num_clusters, 1).cwiseAbs2()).cwiseSqrt()).array() * 
+				((virtual_coord.block(0, 0, num_clusters, 1).cwiseAbs2() + virtual_coord.block(0, 1, num_clusters, 1).cwiseAbs2()).cwiseSqrt()).array(); 
+		std::cout << "deno_deg_max : \n" << deno_deg_max << std::endl;
+		Eigen::MatrixXf clsuters_deg_max = mole_deg_max.array() / deno_deg_max.array();
+		std::cout << "clusters_deg_max : \n" << clsuters_deg_max << std::endl;
+
+		Eigen::MatrixXf mole_deg_min = (cluster_mat.block(0, 2, num_clusters, 2) * virtual_coord.transpose()).col(0);
+		std::cout << "mole_deg_min : \n" <<  mole_deg_max << std::endl;
+		Eigen::MatrixXf deno_deg_min = 
+				((cluster_mat.block(0, 2, num_clusters, 1).cwiseAbs2() + cluster_mat.block(0, 3, num_clusters, 1).cwiseAbs2()).cwiseSqrt()).array() * 
+				((virtual_coord.block(0, 0, num_clusters, 1).cwiseAbs2() + virtual_coord.block(0, 1, num_clusters, 1).cwiseAbs2()).cwiseSqrt()).array(); 
+		std::cout << "deno_deg_min : \n" << deno_deg_min << std::endl;
+		Eigen::MatrixXf clsuters_deg_min = mole_deg_min.array() / deno_deg_min.array();
+		std::cout << "clusters_deg_min : \n" << clsuters_deg_min << std::endl;
+	}
 
 	// Eigen::MatrixXf clusters_deg_min = virtual_coord.block(0, 0, num_clusters, 2).dot(cluster_mat.block(0, 2, num_clusters, 2)) / 
 	// 			((cluster_mat.block(0, 2, num_clusters, 1).cwiseAbs2() + cluster_mat.block(0, 3, num_clusters, 1).cwiseAbs2()).cwiseSqrt() * 
