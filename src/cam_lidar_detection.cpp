@@ -6,6 +6,7 @@
 #include <iostream>
 #include <random>
 #include <Eigen/Dense>
+#include <Eigen/Eigenvalues>
 #include <pcl/common/common.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -33,7 +34,7 @@ public:
     ros::NodeHandle nhPrivate;
     void run();
     void lidar_callback(const sensor_msgs::PointCloud2& data);
-	void detection_callback(const std_msgs::Float32MultiArray& data);
+	void detection_callback(const std_msgs::Float32MultiArray::ConstPtr& data);
     //void detect_callback(const std::vector& data);
     void clustering(void);
     void fix_clustering(void);
@@ -67,6 +68,8 @@ public:
 
 	double leafsize;
 	
+	// IoUのためのクラスタリングからxのmaxminを取り出す
+	std::vector<float> x_maxmin;
 
 	//Clusteringで実行必要とされる変数たち
 
@@ -92,6 +95,7 @@ void Cam_lidar_detection::run()
     pub_marker = nh.advertise<visualization_msgs::MarkerArray>("clustering", 100);
 
     sub_lidar = nh.subscribe("/points_no_ground", 100, &Cam_lidar_detection::lidar_callback, this);
+	sub_datect = nh.subscribe("/person_box_coord", 100, &Cam_lidar_detection::detection_callback, this);
 
     // viewer->setBackgroundColor(1.0, 1.0, 1.0, 0);
 	// viewer->addCoordinateSystem(1.0, "axis");
@@ -137,8 +141,65 @@ void Cam_lidar_detection::lidar_callback(const sensor_msgs::PointCloud2& data){
     // visualization();
 }
 
-void Cam_lidar_detection::detection_callback(const std_msgs::Float32MultiArray& data){
+void Cam_lidar_detection::detection_callback(const std_msgs::Float32MultiArray::ConstPtr& data){
+	std::vector<float> msg_vec = data->data;
+	// for(size_t i=0; i<msg_vec.size(); i++){
+	// 	ROS_WARN("coord : %f", msg_vec[i]);
+	// }
+
+	float image_width = 1200;
+	const int h = data->layout.dim[0].size;
+	const int w = data->layout.dim[1].size;
+
+	Eigen::Map<Eigen::MatrixXf, Eigen::RowMajor> detection_mat(msg_vec.data(), h, w);
+	// 角度の抽出
+	detection_mat = detection_mat/image_width * 360;
+	// Eigen::MatrixXf detection_deg_max = detection_mat.block(0, 0, 1, h);
+	// Eigen::MatrixXf detection_deg_min = detection_mat.block(0, 2, 1, h);
+	// std::cout << "detection_mat :\n" << detection_mat << std::endl;
+	Eigen::MatrixXf detection_deg_max =  detection_mat.block(0, 0, h, 1);
+	Eigen::MatrixXf detection_deg_min =  detection_mat.block(0, 2, h, 1);
+	// std::cout << "detection : \n" << detection_mat.block(0, 2, h, 1) << std::endl;
+
+	int num_clusters = x_maxmin.size() / 4;
+	Eigen::Map<Eigen::MatrixXf, Eigen::RowMajor> cluster_mat(msg_vec.data(), num_clusters, 4);
+	// std::cout << "cluster_mat : \n" << cluster_mat << std::endl;
+	// 基準となる(x, y)=(0, 10)の座標を用意
+	Eigen::MatrixXf virtual_coord = Eigen::MatrixXf::Zero(num_clusters, 2);
+	virtual_coord.col(0) = Eigen::VectorXf::Constant(num_clusters, 1);
+	virtual_coord.col(1) = Eigen::VectorXf::Constant(num_clusters, 10);
+	// std::cout << "virtual_coord dot : \n" << virtual_coord << std::endl;
+	// std::cout << "num_clusters : \n" << num_clusters << std::endl;
+	// std::cout << "cluster_mat dot : \n" << cluster_mat.block(0, 0, num_clusters, 2).dot(virtual_coord.transpose()) << std::endl;
+	std::cout << "cluster_mat block : \n" << cluster_mat.block(0, 0, num_clusters, 2) << std::endl;
+	std::cout << "virtual_coord transpose : \n" << virtual_coord.transpose() << std::endl;
+	Eigen::MatrixXf mole_deg_max = (cluster_mat.block(0, 0, num_clusters, 2) * virtual_coord.transpose()).col(0);
+	// std::cout << "mole_deg_max : \n" <<  mole_deg_max << std::endl;
+	// Eigen::MatrixXf deno_deg_max = 
+	// 		((cluster_mat.block(0, 0, num_clusters, 1).cwiseAbs2() + cluster_mat.block(0, 1, num_clusters, 1).cwiseAbs2()).cwiseSqrt()).array() * 
+ 	// 		((virtual_coord.block(0, 0, num_clusters, 1).cwiseAbs2() + virtual_coord.block(0, 1, num_clusters, 1).cwiseAbs2()).cwiseSqrt()).array(); 
+	// std::cout << "deno_deg_max : \n" << deno_deg_max << std::endl;
+	// Eigen::MatrixXf clsuters_deg_max = mole_deg_max.array() / deno_deg_max.array();
+	// std::cout << "clusters_deg_max : \n" << clsuters_deg_max << std::endl;
+
+	// Eigen::MatrixXf clusters_deg_min = virtual_coord.block(0, 0, num_clusters, 2).dot(cluster_mat.block(0, 2, num_clusters, 2)) / 
+	// 			((cluster_mat.block(0, 2, num_clusters, 1).cwiseAbs2() + cluster_mat.block(0, 3, num_clusters, 1).cwiseAbs2()).cwiseSqrt() * 
+	// 			(virtual_coord.block(0, 0, num_clusters, 1).cwiseAbs2() + virtual_coord.block(0, 1, num_clusters, 1).cwiseAbs2()).cwiseSqrt()).array(); 
+
+	// std::cout << "detection_deg_max : \n" << detection_deg_max << std::endl;
+	// std::cout << "detection_deg_min : \n" << detection_deg_min << std::endl;
+	// std::cout << "cluters_deg_max : \n" << clusters_deg_max << std::endl;
+	// std::cout << "cluters_deg_min : \n" << clusters_deg_min << std::endl;
 	
+	// std::cout << "h :" << h << std::endl;
+	// std::cout << "w :" << w << std::endl;
+	// std::cout << "Before matrix" << std::endl;
+	// for(size_t i = 0; i < msg_vec.size(); i++){
+	// 	std::cout << " " << msg_vec[i];
+	// }std::cout << std::endl;
+
+	// std::cout << "detection matrix mat:\n" << detection_mat << std::endl;
+	// std::cout << "clustering matrix mat :\n" << cluster_mat << std::endl;
 }
 
 void Cam_lidar_detection::clustering(void){
@@ -163,8 +224,8 @@ void Cam_lidar_detection::clustering(void){
 	cluster_indices.clear();
 	ece.extract(cluster_indices);
 
-	std::cout << "cluster_indices.size() = " << cluster_indices.size() << std::endl;
-	ROS_INFO("hoe many clustering : %d", cluster_indices.size());
+	// std::cout << "cluster_indices.size() = " << cluster_indices.size() << std::endl;
+	// ROS_INFO("hoe many clustering : %d", cluster_indices.size());
 
 	/*dividing（クラスタごとに点群を分割）*/
 	ei.setInputCloud(cloud);
@@ -192,8 +253,10 @@ void Cam_lidar_detection::clustering(void){
 void Cam_lidar_detection::rviz_visualization(void){
 	marker_array.markers.resize(clusters.size());
 	// marker_array.markers.resize(1);
+	x_maxmin.clear();
 	for(size_t i=0; i<clusters.size(); i++){
 		// int i = 0;
+		// boxを描写
 		marker_array.markers[i].header.frame_id = "/velodyne";
 		marker_array.markers[i].header.stamp = ros::Time::now();
 		marker_array.markers[i].ns = "clustering_object";
@@ -219,10 +282,17 @@ void Cam_lidar_detection::rviz_visualization(void){
 		marker_array.markers[i].color.g = 0.0f;
 		marker_array.markers[i].color.b = 1.0f;
 		marker_array.markers[i].color.a = 0.4f;
+		
+		// boxのx座標の最大値と最小値を取り出す(IoUの計算のため)
+		x_maxmin.push_back(minPt.x);
+		x_maxmin.push_back(minPt.y);
+		x_maxmin.push_back(maxPt.x);
+		x_maxmin.push_back(maxPt.y);
 	}
+
 	pub_marker.publish(marker_array);
 	marker_array.markers.clear();
-	std::cout << "published!!!!!" << std::endl;
+	// std::cout << "published!!!!!" << std::endl;
 }
 
 void Cam_lidar_detection::downsampling(void){
