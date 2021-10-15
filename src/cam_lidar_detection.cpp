@@ -143,15 +143,16 @@ void Cam_lidar_detection::lidar_callback(const sensor_msgs::PointCloud2& data){
 
 void Cam_lidar_detection::detection_callback(const std_msgs::Float32MultiArray::ConstPtr& data){
 	std::vector<float> msg_vec = data->data;
-	// for(size_t i=0; i<msg_vec.size(); i++){
-	// 	ROS_WARN("coord : %f", msg_vec[i]);
-	// }
+	for(size_t i=0; i<msg_vec.size(); i++){
+		ROS_WARN("coord : %f", msg_vec[i]);
+	}
 
 	float image_width = 1200;
 	const int h = data->layout.dim[0].size;
 	const int w = data->layout.dim[1].size;
 
 	Eigen::Map<Eigen::MatrixXf, Eigen::RowMajor> detection_mat(msg_vec.data(), h, w);
+	std::cout << "detecton_mat : " << detection_mat << std::endl;
 	// 角度の抽出
 	detection_mat = detection_mat/image_width * 360;
 	// Eigen::MatrixXf detection_deg_max = detection_mat.block(0, 0, 1, h);
@@ -162,7 +163,7 @@ void Cam_lidar_detection::detection_callback(const std_msgs::Float32MultiArray::
 	// std::cout << "detection : \n" << detection_mat.block(0, 2, h, 1) << std::endl;
 
 	int num_clusters = x_maxmin.size() / 4;
-	Eigen::Map<Eigen::MatrixXf, Eigen::RowMajor> cluster_mat(msg_vec.data(), num_clusters, 4);
+	Eigen::Map<Eigen::MatrixXf, Eigen::RowMajor> cluster_mat(x_maxmin.data(), num_clusters, 4);
 	std::cout << "cluster_mat : \n" << cluster_mat << std::endl;
 	// 基準となる(x, y)=(0, 10)の座標を用意
 	if(cluster_mat.size() != 0){
@@ -175,23 +176,58 @@ void Cam_lidar_detection::detection_callback(const std_msgs::Float32MultiArray::
 		// std::cout << "cluster_mat block : \n" << cluster_mat.block(0, 0, num_clusters, 2) << std::endl;
 		// std::cout << "virtual_coord transpose : \n" << virtual_coord.transpose() << std::endl;
 		Eigen::MatrixXf mole_deg_max = (cluster_mat.block(0, 0, num_clusters, 2) * virtual_coord.transpose()).col(0);
-		std::cout << "mole_deg_max : \n" <<  mole_deg_max << std::endl;
+		// std::cout << "mole_deg_max : \n" <<  mole_deg_max << std::endl;
 		Eigen::MatrixXf deno_deg_max = 
 				((cluster_mat.block(0, 0, num_clusters, 1).cwiseAbs2() + cluster_mat.block(0, 1, num_clusters, 1).cwiseAbs2()).cwiseSqrt()).array() * 
 				((virtual_coord.block(0, 0, num_clusters, 1).cwiseAbs2() + virtual_coord.block(0, 1, num_clusters, 1).cwiseAbs2()).cwiseSqrt()).array(); 
-		std::cout << "deno_deg_max : \n" << deno_deg_max << std::endl;
-		Eigen::MatrixXf clsuters_deg_max = mole_deg_max.array() / deno_deg_max.array();
-		std::cout << "clusters_deg_max : \n" << clsuters_deg_max << std::endl;
+		// std::cout << "deno_deg_max : \n" << deno_deg_max << std::endl;
+		Eigen::MatrixXf clusters_deg_max = mole_deg_max.array() / deno_deg_max.array();
+		// std::cout << "clusters_deg_max : \n" << clusters_deg_max << std::endl;
 
 		Eigen::MatrixXf mole_deg_min = (cluster_mat.block(0, 2, num_clusters, 2) * virtual_coord.transpose()).col(0);
-		std::cout << "mole_deg_min : \n" <<  mole_deg_max << std::endl;
+		// std::cout << "mole_deg_min : \n" <<  mole_deg_max << std::endl;
 		Eigen::MatrixXf deno_deg_min = 
 				((cluster_mat.block(0, 2, num_clusters, 1).cwiseAbs2() + cluster_mat.block(0, 3, num_clusters, 1).cwiseAbs2()).cwiseSqrt()).array() * 
 				((virtual_coord.block(0, 0, num_clusters, 1).cwiseAbs2() + virtual_coord.block(0, 1, num_clusters, 1).cwiseAbs2()).cwiseSqrt()).array(); 
-		std::cout << "deno_deg_min : \n" << deno_deg_min << std::endl;
-		Eigen::MatrixXf clsuters_deg_min = mole_deg_min.array() / deno_deg_min.array();
-		std::cout << "clusters_deg_min : \n" << clsuters_deg_min << std::endl;
+		// std::cout << "deno_deg_min : \n" << deno_deg_min << std::endl;
+		Eigen::MatrixXf clusters_deg_min = mole_deg_min.array() / deno_deg_min.array();
+		// std::cout << "clusters_deg_min : \n" << clusters_deg_min << std::endl;
+
+		// caliculate IoU
+		float overlap_left = 0;
+		float overlap_right = 0;
+		float alloffield = 0;
+		float overlap_field = 0;
+		float IoU = 0;
+		// std::vector<int> object_num; // IoUが閾値以上の番号を追加
+		// for(size_t i=0; i < clusters_deg_max.size(); i++){
+		// 	for(size_t j=0; j < detection_deg_max.size(); j++){
+		// 		if ((detection_deg_max(i) - clusters_deg_max(j)) > 0){
+		// 			overlap_left = clusters_deg_max(i);
+		// 		}else{
+		// 			overlap_left = detection_deg_max(i);
+		// 		}
+		// 		if ((clusters_deg_min(i) - detection_deg_min(j)) > 0){
+		// 			overlap_right = detection_deg_min(i);
+		// 		}else{
+		// 			overlap_right = clusters_deg_min(i);
+		// 		}
+		// 		alloffield = clusters_deg_max(i) - clusters_deg_min(i) + detection_deg_max(i) - detection_deg_min(i);
+		// 		overlap_field = overlap_right - overlap_left;
+
+		// 		IoU	= overlap_field / (alloffield - overlap_field);
+		// 		if (IoU > 0.5){
+		// 			object_num.push_back(i);
+		// 		}
+		// 	}
+		// }
+
+		// for(size_t i = 0; i < object_num.size(); i++){
+		// 	std::cout << "人のクラスタリング番号は" << object_num[i];
+		// }std::cout << "\n" << std::endl;
 	}
+
+	
 
 	// Eigen::MatrixXf clusters_deg_min = virtual_coord.block(0, 0, num_clusters, 2).dot(cluster_mat.block(0, 2, num_clusters, 2)) / 
 	// 			((cluster_mat.block(0, 2, num_clusters, 1).cwiseAbs2() + cluster_mat.block(0, 3, num_clusters, 1).cwiseAbs2()).cwiseSqrt() * 
@@ -295,10 +331,10 @@ void Cam_lidar_detection::rviz_visualization(void){
 		marker_array.markers[i].color.a = 0.4f;
 		
 		// boxのx座標の最大値と最小値を取り出す(IoUの計算のため)
-		x_maxmin.push_back(minPt.x);
-		x_maxmin.push_back(minPt.y);
 		x_maxmin.push_back(maxPt.x);
 		x_maxmin.push_back(maxPt.y);
+		x_maxmin.push_back(minPt.x);
+		x_maxmin.push_back(minPt.y);
 	}
 
 	pub_marker.publish(marker_array);
